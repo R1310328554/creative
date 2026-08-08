@@ -87,6 +87,6 @@ export const useAppStore = create<AppState>()(
         return newId;
       },
     }),
-    { name: 'lingda-apps-v1' },
+    { name: 'lingda-apps-v2' },
   ),
 );

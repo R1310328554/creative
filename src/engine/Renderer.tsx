@@ -194,9 +194,16 @@ export function Renderer({
               e.preventDefault();
               return;
             }
-            const action = String(node.props.action ?? 'toast');
-            const message = String(node.props.actionMessage ?? node.props.text ?? '已触发');
-            runtime?.onButtonAction(action, message);
+            const text = String(node.props.text ?? '');
+            let action = String(node.props.action ?? '');
+            if (!action || action === 'none') {
+              if (/提交|保存|审批|报销/.test(text)) action = 'submit';
+              else if (/重置|清空/.test(text)) action = 'reset';
+              else if (/取消/.test(text)) action = 'none';
+              else action = 'toast';
+            }
+            const message = String(node.props.actionMessage ?? `${text || '操作'}成功`);
+            if (action !== 'none') runtime?.onButtonAction(action, message);
           }}
         >
           {String(node.props.text ?? '按钮')}
