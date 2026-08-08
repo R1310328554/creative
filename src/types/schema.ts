@@ -24,6 +24,12 @@ export type ComponentType =
 
 export type NodeStyle = Record<string, string | number | undefined>;
 
+export type ButtonAction =
+  | { type: 'toast'; message: string }
+  | { type: 'submit'; successMessage?: string }
+  | { type: 'reset' }
+  | { type: 'navigate'; href: string };
+
 export interface SchemaNode {
   id: string;
   type: ComponentType;
@@ -54,6 +60,16 @@ export interface LowcodeApp {
   updatedAt: string;
 }
 
+export type PropFieldType = 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'options' | 'rows';
+
+export interface PropFieldMeta {
+  key: string;
+  label: string;
+  type: PropFieldType;
+  options?: Array<{ label: string; value: string }>;
+  placeholder?: string;
+}
+
 export interface PaletteItem {
   type: ComponentType;
   label: string;
@@ -62,6 +78,7 @@ export interface PaletteItem {
   defaultProps: Record<string, unknown>;
   defaultStyle?: NodeStyle;
   canHaveChildren?: boolean;
+  propFields?: PropFieldMeta[];
 }
 
 export interface AIMessage {
@@ -69,5 +86,13 @@ export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   schemaPatch?: SchemaNode | null;
+  mode?: 'replace' | 'refine';
   createdAt: string;
+}
+
+export interface FormRuntimeState {
+  values: Record<string, unknown>;
+  errors: Record<string, string>;
+  submitted: boolean;
+  toast: string | null;
 }

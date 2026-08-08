@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Toolbar } from '../components/designer/Toolbar';
 import { ComponentPalette } from '../components/designer/ComponentPalette';
@@ -12,18 +12,25 @@ import { useDesignerStore } from '../store/designerStore';
 export function DesignerPage() {
   const { appId } = useParams();
   const app = useAppStore((s) => s.apps.find((a) => a.id === appId));
-  const loadPage = useDesignerStore((s) => s.loadPage);
+  const loadApp = useDesignerStore((s) => s.loadApp);
   const page = useDesignerStore((s) => s.page);
   const showAI = useDesignerStore((s) => s.showAI);
   const deleteSelected = useDesignerStore((s) => s.deleteSelected);
   const undo = useDesignerStore((s) => s.undo);
   const redo = useDesignerStore((s) => s.redo);
+  const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (app) {
-      loadPage(app.id, app.pages[0]);
-    }
-  }, [app, loadPage]);
+    if (!app) return;
+    // 仅在切换应用时加载，避免保存后重置设计器状态
+    if (loadedFor.current === app.id) return;
+    loadApp(app.id, app.pages);
+    loadedFor.current = app.id;
+  }, [app, loadApp]);
+
+  useEffect(() => {
+    loadedFor.current = null;
+  }, [appId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -36,11 +43,15 @@ export function DesignerPage() {
         e.preventDefault();
         redo();
       }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !meta) {
         const tag = (e.target as HTMLElement)?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
         e.preventDefault();
         deleteSelected();
+      }
+      if (meta && e.key === 's') {
+        e.preventDefault();
+        document.querySelector<HTMLButtonElement>('.designer__bar-right .btn--primary')?.click();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -65,7 +76,7 @@ export function DesignerPage() {
     <div className="designer">
       <Toolbar />
       <div className={`designer__body ${showAI ? 'ai-open' : ''}`}>
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: '1px solid var(--ld-line)' }}>
+        <div className="designer__left">
           <ComponentPalette />
           <OutlineTree />
         </div>

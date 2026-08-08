@@ -1,4 +1,10 @@
-import type { PaletteItem } from '../types/schema';
+import type { PaletteItem, PropFieldMeta } from '../types/schema';
+
+const formCommon: PropFieldMeta[] = [
+  { key: 'label', label: '标签', type: 'text' },
+  { key: 'name', label: '字段名', type: 'text', placeholder: '英文标识' },
+  { key: 'required', label: '必填', type: 'boolean' },
+];
 
 export const paletteItems: PaletteItem[] = [
   {
@@ -27,6 +33,7 @@ export const paletteItems: PaletteItem[] = [
     defaultProps: { columns: 2 },
     defaultStyle: { display: 'grid', gap: '16px' },
     canHaveChildren: true,
+    propFields: [{ key: 'columns', label: '列数', type: 'number' }],
   },
   {
     type: 'Card',
@@ -36,6 +43,10 @@ export const paletteItems: PaletteItem[] = [
     defaultProps: { title: '卡片标题', subtitle: '补充说明' },
     defaultStyle: { padding: '20px', borderRadius: '16px', background: '#ffffff', border: '1px solid #e2e8f0' },
     canHaveChildren: true,
+    propFields: [
+      { key: 'title', label: '卡片标题', type: 'text' },
+      { key: 'subtitle', label: '副标题', type: 'text' },
+    ],
   },
   {
     type: 'Heading',
@@ -44,6 +55,20 @@ export const paletteItems: PaletteItem[] = [
     description: '页面或区块标题',
     defaultProps: { text: '标题文本', level: 2 },
     defaultStyle: { margin: '0', color: '#0f172a' },
+    propFields: [
+      { key: 'text', label: '标题文案', type: 'text' },
+      {
+        key: 'level',
+        label: '级别',
+        type: 'select',
+        options: [
+          { label: 'H1', value: '1' },
+          { label: 'H2', value: '2' },
+          { label: 'H3', value: '3' },
+          { label: 'H4', value: '4' },
+        ],
+      },
+    ],
   },
   {
     type: 'Text',
@@ -52,13 +77,45 @@ export const paletteItems: PaletteItem[] = [
     description: '段落说明文字',
     defaultProps: { text: '在这里填写说明内容。' },
     defaultStyle: { color: '#475569', fontSize: '15px', margin: '0' },
+    propFields: [{ key: 'text', label: '文本内容', type: 'textarea' }],
   },
   {
     type: 'Button',
     label: '按钮',
     category: 'basic',
     description: '操作触发按钮',
-    defaultProps: { text: '提交', variant: 'primary', size: 'md' },
+    defaultProps: {
+      text: '提交',
+      variant: 'primary',
+      size: 'md',
+      action: 'submit',
+      actionMessage: '提交成功',
+    },
+    propFields: [
+      { key: 'text', label: '按钮文字', type: 'text' },
+      {
+        key: 'variant',
+        label: '样式',
+        type: 'select',
+        options: [
+          { label: '主要', value: 'primary' },
+          { label: '次要', value: 'ghost' },
+          { label: '强调', value: 'accent' },
+        ],
+      },
+      {
+        key: 'action',
+        label: '点击动作',
+        type: 'select',
+        options: [
+          { label: '提交表单', value: 'submit' },
+          { label: '重置表单', value: 'reset' },
+          { label: '提示消息', value: 'toast' },
+          { label: '无操作', value: 'none' },
+        ],
+      },
+      { key: 'actionMessage', label: '提示/成功文案', type: 'text' },
+    ],
   },
   {
     type: 'Image',
@@ -70,6 +127,10 @@ export const paletteItems: PaletteItem[] = [
       alt: '示例图片',
     },
     defaultStyle: { width: '100%', borderRadius: '12px', height: '180px' },
+    propFields: [
+      { key: 'src', label: '图片地址', type: 'text' },
+      { key: 'alt', label: '替代文本', type: 'text' },
+    ],
   },
   {
     type: 'Divider',
@@ -85,6 +146,7 @@ export const paletteItems: PaletteItem[] = [
     category: 'basic',
     description: '垂直空白间距',
     defaultProps: { size: 24 },
+    propFields: [{ key: 'size', label: '高度 (px)', type: 'number' }],
   },
   {
     type: 'Input',
@@ -92,6 +154,10 @@ export const paletteItems: PaletteItem[] = [
     category: 'form',
     description: '文本输入框',
     defaultProps: { label: '字段名称', placeholder: '请输入', required: false, name: 'field' },
+    propFields: [
+      ...formCommon,
+      { key: 'placeholder', label: '占位符', type: 'text' },
+    ],
   },
   {
     type: 'TextArea',
@@ -99,6 +165,11 @@ export const paletteItems: PaletteItem[] = [
     category: 'form',
     description: '多行文本域',
     defaultProps: { label: '备注', placeholder: '请输入详细内容', rows: 4, name: 'remark' },
+    propFields: [
+      ...formCommon,
+      { key: 'placeholder', label: '占位符', type: 'text' },
+      { key: 'rows', label: '行数', type: 'number' },
+    ],
   },
   {
     type: 'Select',
@@ -110,14 +181,21 @@ export const paletteItems: PaletteItem[] = [
       placeholder: '请选择',
       options: ['选项 A', '选项 B', '选项 C'],
       name: 'type',
+      required: false,
     },
+    propFields: [
+      ...formCommon,
+      { key: 'placeholder', label: '占位符', type: 'text' },
+      { key: 'options', label: '选项（逗号分隔）', type: 'options' },
+    ],
   },
   {
     type: 'DatePicker',
     label: '日期选择',
     category: 'form',
     description: '日期/时间选择',
-    defaultProps: { label: '日期', name: 'date' },
+    defaultProps: { label: '日期', name: 'date', required: false },
+    propFields: formCommon,
   },
   {
     type: 'Switch',
@@ -125,13 +203,24 @@ export const paletteItems: PaletteItem[] = [
     category: 'form',
     description: '布尔开关',
     defaultProps: { label: '启用通知', checked: true, name: 'notify' },
+    propFields: [
+      { key: 'label', label: '标签', type: 'text' },
+      { key: 'name', label: '字段名', type: 'text' },
+      { key: 'checked', label: '默认开启', type: 'boolean' },
+    ],
   },
   {
     type: 'Checkbox',
     label: '复选框',
     category: 'form',
     description: '多选勾选',
-    defaultProps: { label: '我已阅读并同意协议', checked: false, name: 'agree' },
+    defaultProps: { label: '我已阅读并同意协议', checked: false, name: 'agree', required: false },
+    propFields: [
+      { key: 'label', label: '标签', type: 'text' },
+      { key: 'name', label: '字段名', type: 'text' },
+      { key: 'checked', label: '默认勾选', type: 'boolean' },
+      { key: 'required', label: '必填', type: 'boolean' },
+    ],
   },
   {
     type: 'Radio',
@@ -144,6 +233,12 @@ export const paletteItems: PaletteItem[] = [
       value: '中',
       name: 'priority',
     },
+    propFields: [
+      { key: 'label', label: '标签', type: 'text' },
+      { key: 'name', label: '字段名', type: 'text' },
+      { key: 'value', label: '默认值', type: 'text' },
+      { key: 'options', label: '选项（逗号分隔）', type: 'options' },
+    ],
   },
   {
     type: 'Table',
@@ -159,6 +254,11 @@ export const paletteItems: PaletteItem[] = [
         ['合同评审', '待提交', '陈静', '2026-08-05'],
       ],
     },
+    propFields: [
+      { key: 'title', label: '表格标题', type: 'text' },
+      { key: 'columns', label: '列（逗号分隔）', type: 'options' },
+      { key: 'rows', label: '行数据（每行用 | 分隔）', type: 'rows' },
+    ],
   },
   {
     type: 'Stat',
@@ -166,6 +266,21 @@ export const paletteItems: PaletteItem[] = [
     category: 'data',
     description: '关键数据指标',
     defaultProps: { label: '本月提交', value: '128', trend: '+12%', tone: 'positive' },
+    propFields: [
+      { key: 'label', label: '指标名', type: 'text' },
+      { key: 'value', label: '数值', type: 'text' },
+      { key: 'trend', label: '趋势', type: 'text' },
+      {
+        key: 'tone',
+        label: '语气',
+        type: 'select',
+        options: [
+          { label: '正向', value: 'positive' },
+          { label: '中性', value: 'neutral' },
+          { label: '警示', value: 'warning' },
+        ],
+      },
+    ],
   },
   {
     type: 'Tabs',
@@ -174,6 +289,7 @@ export const paletteItems: PaletteItem[] = [
     description: '切换内容分区',
     defaultProps: { tabs: ['概览', '明细', '设置'], active: 0 },
     canHaveChildren: true,
+    propFields: [{ key: 'tabs', label: '选项卡（逗号分隔）', type: 'options' }],
   },
   {
     type: 'Alert',
@@ -185,6 +301,20 @@ export const paletteItems: PaletteItem[] = [
       message: '提交前请确认必填项已完整填写。',
       tone: 'info',
     },
+    propFields: [
+      { key: 'title', label: '标题', type: 'text' },
+      { key: 'message', label: '内容', type: 'textarea' },
+      {
+        key: 'tone',
+        label: '类型',
+        type: 'select',
+        options: [
+          { label: '信息', value: 'info' },
+          { label: '警告', value: 'warning' },
+          { label: '成功', value: 'success' },
+        ],
+      },
+    ],
   },
 ];
 
@@ -195,3 +325,7 @@ export const categoryLabels: Record<PaletteItem['category'], string> = {
   data: '数据',
   feedback: '反馈',
 };
+
+export function getPaletteItem(type: string) {
+  return paletteItems.find((item) => item.type === type);
+}

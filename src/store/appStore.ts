@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { nanoid } from 'nanoid';
 import type { AppType, LowcodeApp, PageSchema } from '../types/schema';
 import { createEmptyPage, starterApps } from '../data/templates';
+import { cloneNode } from '../engine/tree';
 
 interface AppState {
   apps: LowcodeApp[];
@@ -78,7 +79,8 @@ export const useAppStore = create<AppState>()(
           pages: source.pages.map((p) => ({
             ...p,
             id: nanoid(10),
-            root: structuredClone(p.root),
+            root: cloneNode(p.root),
+            updatedAt: now,
           })),
         };
         set((s) => ({ apps: [copy, ...s.apps] }));

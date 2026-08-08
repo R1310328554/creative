@@ -1,15 +1,26 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import clsx from 'clsx';
 import type { SchemaNode } from '../types/schema';
+
+export interface RuntimeHandlers {
+  values: Record<string, unknown>;
+  errors: Record<string, string>;
+  onChange: (name: string, value: unknown) => void;
+  onButtonAction: (action: string, message?: string) => void;
+}
 
 interface RendererProps {
   node: SchemaNode;
   mode?: 'design' | 'preview';
   selectedId?: string | null;
   hoverId?: string | null;
+  dropTargetId?: string | null;
   onSelect?: (id: string) => void;
   onHover?: (id: string | null) => void;
+  onDropTarget?: (id: string | null) => void;
   onDropType?: (type: string, targetId: string) => void;
+  onDropNode?: (nodeId: string, targetId: string) => void;
+  runtime?: RuntimeHandlers;
 }
 
 function styleOf(node: SchemaNode): CSSProperties {
@@ -31,13 +42,19 @@ export function Renderer({
   mode = 'preview',
   selectedId,
   hoverId,
+  dropTargetId,
   onSelect,
   onHover,
+  onDropTarget,
   onDropType,
+  onDropNode,
+  runtime,
 }: RendererProps) {
   const selected = selectedId === node.id;
   const hovered = hoverId === node.id;
+  const dropActive = dropTargetId === node.id;
   const design = mode === 'design';
+  const [tabActive, setTabActive] = useState(Number(node.props.active ?? 0));
 
   const wrap = (content: ReactNode, className?: string) => (
     <div
@@ -47,6 +64,7 @@ export function Renderer({
         design && 'ld-node--design',
         selected && 'is-selected',
         hovered && !selected && 'is-hovered',
+        dropActive && 'is-drop-target',
         className,
       )}
       style={styleOf(node)}
@@ -73,6 +91,15 @@ export function Renderer({
           ? (e) => {
               e.preventDefault();
               e.stopPropagation();
+              onDropTarget?.(node.id);
+            }
+          : undefined
+      }
+      onDragLeave={
+        design
+          ? (e) => {
+              e.stopPropagation();
+              onDropTarget?.(null);
             }
           : undefined
       }
@@ -82,29 +109,36 @@ export function Renderer({
               e.preventDefault();
               e.stopPropagation();
               const type = e.dataTransfer.getData('application/lingda-type');
+              const nodeId = e.dataTransfer.getData('application/lingda-node');
               if (type) onDropType?.(type, node.id);
+              else if (nodeId) onDropNode?.(nodeId, node.id);
+              onDropTarget?.(null);
             }
           : undefined
       }
     >
-      {design && (selected || hovered) && (
+      {design && (selected || hovered || dropActive) && (
         <span className="ld-node__badge">{node.label || node.type}</span>
       )}
       {content}
     </div>
   );
 
-  const kids = () =>
-    (node.children ?? []).map((child) => (
+  const kids = (children?: SchemaNode[]) =>
+    (children ?? node.children ?? []).map((child) => (
       <Renderer
         key={child.id}
         node={child}
         mode={mode}
         selectedId={selectedId}
         hoverId={hoverId}
+        dropTargetId={dropTargetId}
         onSelect={onSelect}
         onHover={onHover}
+        onDropTarget={onDropTarget}
         onDropType={onDropType}
+        onDropNode={onDropNode}
+        runtime={runtime}
       />
     ));
 
@@ -150,8 +184,20 @@ export function Renderer({
       return wrap(
         <button
           type="button"
-          className={clsx('ld-btn', `ld-btn--${node.props.variant ?? 'primary'}`, `ld-btn--${node.props.size ?? 'md'}`)}
-          onClick={(e) => design && e.preventDefault()}
+          className={clsx(
+            'ld-btn',
+            `ld-btn--${node.props.variant ?? 'primary'}`,
+            `ld-btn--${node.props.size ?? 'md'}`,
+          )}
+          onClick={(e) => {
+            if (design) {
+              e.preventDefault();
+              return;
+            }
+            const action = String(node.props.action ?? 'toast');
+            const message = String(node.props.actionMessage ?? node.props.text ?? '已触发');
+            runtime?.onButtonAction(action, message);
+          }}
         >
           {String(node.props.text ?? '按钮')}
         </button>,
@@ -177,7 +223,10 @@ export function Renderer({
     case 'Switch':
     case 'Checkbox':
     case 'Radio':
-      return wrap(<FormControl node={node} design={design} />, 'ld-field');
+      return wrap(
+        <FormControl node={node} design={design} runtime={runtime} />,
+        'ld-field',
+      );
     case 'Table':
       return wrap(<DataTable node={node} />, 'ld-table-wrap');
     case 'Stat':
@@ -190,17 +239,30 @@ export function Renderer({
       );
     case 'Tabs': {
       const tabs = (node.props.tabs as string[]) ?? [];
-      const active = Number(node.props.active ?? 0);
+      const active = design ? Number(node.props.active ?? 0) : tabActive;
+      const childList = node.children ?? [];
       return wrap(
         <div className="ld-tabs">
           <div className="ld-tabs__list">
             {tabs.map((t, i) => (
-              <span key={t} className={clsx('ld-tabs__tab', i === active && 'is-active')}>
+              <button
+                key={`${t}-${i}`}
+                type="button"
+                className={clsx('ld-tabs__tab', i === active && 'is-active')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!design) setTabActive(i);
+                  else onSelect?.(node.id);
+                }}
+              >
                 {t}
-              </span>
+              </button>
             ))}
           </div>
-          <div className="ld-tabs__panel">{kids()}</div>
+          <div className="ld-tabs__panel">
+            {design ? kids() : kids(childList[active] ? [childList[active]] : childList.slice(0, 1))}
+            {design && !childList.length && <div className="ld-drop-hint">为每个选项卡添加内容节点</div>}
+          </div>
         </div>,
       );
     }
@@ -216,47 +278,88 @@ export function Renderer({
   }
 }
 
-function FormControl({ node, design }: { node: SchemaNode; design: boolean }) {
+function FormControl({
+  node,
+  design,
+  runtime,
+}: {
+  node: SchemaNode;
+  design: boolean;
+  runtime?: RuntimeHandlers;
+}) {
   const label = String(node.props.label ?? '');
   const required = Boolean(node.props.required);
+  const name = String(node.props.name || node.id);
+  const value = runtime?.values[name];
+  const error = runtime?.errors[name];
+  const interactive = !design && Boolean(runtime);
 
   if (node.type === 'Switch') {
+    const on = interactive ? Boolean(value) : Boolean(node.props.checked);
     return (
       <label className="ld-field__inner" style={{ gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
         {label && <span className="ld-field__label">{label}</span>}
-        <span className={clsx('ld-switch', node.props.checked && 'is-on')}>
+        <button
+          type="button"
+          className={clsx('ld-switch', on && 'is-on')}
+          onClick={(e) => {
+            e.preventDefault();
+            if (interactive) runtime?.onChange(name, !on);
+          }}
+          aria-pressed={on}
+        >
           <span className="ld-switch__knob" />
-        </span>
+        </button>
       </label>
     );
   }
 
   if (node.type === 'Checkbox') {
+    const checked = interactive ? Boolean(value) : Boolean(node.props.checked);
     return (
-      <label className="ld-checkline">
-        <input type="checkbox" defaultChecked={Boolean(node.props.checked)} disabled={design} />
-        <span>{label}</span>
-      </label>
+      <div>
+        <label className="ld-checkline">
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={design}
+            onChange={(e) => interactive && runtime?.onChange(name, e.target.checked)}
+          />
+          <span>
+            {label}
+            {required && <i style={{ color: 'var(--ld-danger)' }}> *</i>}
+          </span>
+        </label>
+        {error ? <div className="ld-field__error">{error}</div> : null}
+      </div>
     );
   }
 
   if (node.type === 'Radio') {
+    const current = interactive ? String(value ?? '') : String(node.props.value ?? '');
     return (
       <div className="ld-field__inner">
-        {label && <span className="ld-field__label">{label}</span>}
+        {label && (
+          <span className="ld-field__label">
+            {label}
+            {required && <i>*</i>}
+          </span>
+        )}
         <div className="ld-radio-group">
           {((node.props.options as string[]) ?? []).map((opt) => (
             <label key={opt} className="ld-radio">
               <input
                 type="radio"
-                name={String(node.props.name ?? node.id)}
-                defaultChecked={opt === node.props.value}
+                name={name}
+                checked={opt === current}
                 disabled={design}
+                onChange={() => interactive && runtime?.onChange(name, opt)}
               />
               <span>{opt}</span>
             </label>
           ))}
         </div>
+        {error ? <div className="ld-field__error">{error}</div> : null}
       </div>
     );
   }
@@ -271,21 +374,30 @@ function FormControl({ node, design }: { node: SchemaNode; design: boolean }) {
       )}
       {node.type === 'Input' && (
         <input
-          className="ld-control"
+          className={clsx('ld-control', error && 'is-invalid')}
           placeholder={String(node.props.placeholder ?? '')}
           readOnly={design}
+          value={interactive ? String(value ?? '') : ''}
+          onChange={(e) => interactive && runtime?.onChange(name, e.target.value)}
         />
       )}
       {node.type === 'TextArea' && (
         <textarea
-          className="ld-control ld-control--area"
+          className={clsx('ld-control ld-control--area', error && 'is-invalid')}
           rows={Number(node.props.rows ?? 3)}
           placeholder={String(node.props.placeholder ?? '')}
           readOnly={design}
+          value={interactive ? String(value ?? '') : ''}
+          onChange={(e) => interactive && runtime?.onChange(name, e.target.value)}
         />
       )}
       {node.type === 'Select' && (
-        <select className="ld-control" disabled={design} defaultValue="">
+        <select
+          className={clsx('ld-control', error && 'is-invalid')}
+          disabled={design}
+          value={interactive ? String(value ?? '') : ''}
+          onChange={(e) => interactive && runtime?.onChange(name, e.target.value)}
+        >
           <option value="" disabled>
             {String(node.props.placeholder ?? '请选择')}
           </option>
@@ -297,8 +409,15 @@ function FormControl({ node, design }: { node: SchemaNode; design: boolean }) {
         </select>
       )}
       {node.type === 'DatePicker' && (
-        <input className="ld-control" type="date" readOnly={design} />
+        <input
+          className={clsx('ld-control', error && 'is-invalid')}
+          type="date"
+          readOnly={design}
+          value={interactive ? String(value ?? '') : ''}
+          onChange={(e) => interactive && runtime?.onChange(name, e.target.value)}
+        />
       )}
+      {error ? <div className="ld-field__error">{error}</div> : null}
     </label>
   );
 }

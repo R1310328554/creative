@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Trash2 } from 'lucide-react';
-import { AI_QUICK_PROMPTS } from '../../engine/ai';
+import { AI_QUICK_PROMPTS, AI_REFINE_PROMPTS } from '../../engine/ai';
 import { useDesignerStore } from '../../store/designerStore';
 
 export function AIAssistant() {
@@ -40,14 +40,24 @@ export function AIAssistant() {
         {messages.map((m) => (
           <div key={m.id} className={`ai-msg ai-msg--${m.role}`}>
             {m.content}
+            {m.mode && (
+              <div className="ai-msg__meta">{m.mode === 'refine' ? '局部细化' : '整页生成'}</div>
+            )}
           </div>
         ))}
         <div ref={endRef} />
       </div>
-      {loading && <div className="ai-loading">正在生成页面结构…</div>}
+      {loading && <div className="ai-loading">正在理解并生成…</div>}
       <div className="ai-quick">
-        {AI_QUICK_PROMPTS.map((p) => (
+        <div className="ai-quick__label">生成</div>
+        {AI_QUICK_PROMPTS.slice(0, 4).map((p) => (
           <button key={p} type="button" className="ai-chip" onClick={() => askAI(p)} disabled={loading}>
+            {p}
+          </button>
+        ))}
+        <div className="ai-quick__label">细化</div>
+        {AI_REFINE_PROMPTS.map((p) => (
+          <button key={p} type="button" className="ai-chip ai-chip--soft" onClick={() => askAI(p)} disabled={loading}>
             {p}
           </button>
         ))}
@@ -55,7 +65,7 @@ export function AIAssistant() {
       <div className="ai-composer">
         <input
           className="ai-input"
-          placeholder="描述你想要的页面，如：生成请假审批表单"
+          placeholder="生成整页，或说「增加手机号字段」细化"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
