@@ -82,35 +82,28 @@ export function HomePage() {
         <div className="home__hero-copy">
           <div className="brand__name">灵搭</div>
           <h1>用 AI 搭业务，像搭积木一样设计应用</h1>
-          <p>
-            拖拽组件、配置属性、一句话生成表单与看板。面向企业内部场景的低代码设计工作台，灵感来自宜搭与微搭。
-          </p>
+          <p>拖拽组件、配置属性，一句话生成表单与看板。</p>
           <div className="home__cta">
             <button type="button" className="btn btn--accent" onClick={() => setOpen(true)}>
               开始设计
             </button>
-            <a href="#apps" className="btn btn--ghost" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', borderColor: 'rgba(255,255,255,0.35)' }}>
-              查看我的应用
-            </a>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', borderColor: 'rgba(255,255,255,0.35)' }}
+              onClick={() => {
+                const id = createApp({
+                  name: 'AI 快速创建',
+                  description: '用自然语言生成页面',
+                  type: 'page',
+                });
+                navigate(`/designer/${id}`);
+              }}
+            >
+              <Sparkles size={16} />
+              AI 创建
+            </button>
           </div>
-        </div>
-
-        <div className="home__hero-panel">
-          <h2>三步上手</h2>
-          <p>从模板起步，或让 AI 直接生成可编辑 Schema。</p>
-          <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--ld-ink-soft)', lineHeight: 1.8, fontSize: 14 }}>
-            <li>选择模板或新建空白应用</li>
-            <li>拖拽组件 / 对话生成页面结构</li>
-            <li>预览、导出 JSON Schema 或继续迭代</li>
-          </ol>
-          <button
-            type="button"
-            className="btn btn--primary"
-            style={{ marginTop: 20, width: '100%' }}
-            onClick={() => fromTemplate('tpl-leave')}
-          >
-            用「请假申请」模板开始
-          </button>
         </div>
       </section>
 
